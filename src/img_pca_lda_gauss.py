@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3.7
 
 ##
 # @file   img_pca_lda_gauss.py 
@@ -14,13 +14,14 @@ import numpy as np
 import scipy
 import imageio
 from sys import exit
+from scipy.ndimage import gaussian_filter
 
 # paths to data directories
 TRAIN_TARGET = '../data/target_train/'
 TRAIN_NTARGET = '../data/non_target_train/'
 TEST_TARGET = '../data/target_dev/'
 TEST_NTARGET = '../data/non_target_dev/'
-THRESHOLD = 10000 # the evaluation treshold for the test data score
+THRESHOLD = 100000 # the evaluation treshold for the test data score
 
 # first, load target and non-target training and test data and convert each image
 # to a 1d array
@@ -32,6 +33,10 @@ test_ntarget = list(png2fea(TEST_NTARGET).items()) # non-target test data
 # convert the grayscale images to 1d arrays
 x1 = []
 x2 = []
+#image = gaussian_filter(list(train_target.values())[0], 1)
+#imageio.imwrite('hello.png', image)
+#for im in train_target.values(): x1.append(gaussian_filter(im, 1).flatten())
+#for im in train_ntarget.values(): x2.append(gaussian_filter(im, 1).flatten())
 for im in train_target.values(): x1.append(im.flatten())
 for im in train_ntarget.values(): x2.append(im.flatten())
 
@@ -41,10 +46,12 @@ x2 = np.array(x2) # non-target
 dim = x1.shape[1]
 
 # standardise the data
-x1 -= np.mean(x1)
-x1 /= np.std(x1)
-x2 -= np.mean(x2)
-x2 /= np.std(x2)
+train_mean = np.mean(np.vstack((x1, x2)), axis=0) 
+train_std = np.std(np.vstack((x1, x2)), axis=0)
+x1 -= train_mean
+x1 /= train_std
+x2 -= train_mean
+x2 /= train_std
 cov_tot = np.cov(np.vstack([x1, x2]).T, bias=True)
 
 # PCA - reduce the dimensionality to 150 dimensions, otherwise the LDA won't work...
@@ -90,38 +97,51 @@ mean_x2, cov_x2 = train_gauss(x2_lda)
 #plt.plot(gauss_x2, stats.norm.pdf(gauss_x2, mean_x2, cov_x2))
 #plt.show()
 
+total = 0
+ok = 0
 print('======Target test data evaluation======')
 for filename, data in test_target:
+    total += 1
     # standardise the data
     data = data.flatten()
-    data -= np.mean(data)
-    data /= np.std(data)
+    data -= train_mean
+    data /= train_std
     
     data = (data.dot(e_pca)).dot(e_lda) # transform the test data
     ll_target = logpdf_gauss(data, mean_x1, np.atleast_2d(cov_x1))
     ll_ntarget = logpdf_gauss(data, mean_x2, np.atleast_2d(cov_x2))
 
     # indicates whether the data point was correctly classified
-    if int(sum(ll_target) - sum(ll_ntarget)) > THRESHOLD: correct = True
+    if int(sum(ll_target) - sum(ll_ntarget)) > THRESHOLD:
+        ok += 1
+        correct = True
     else: correct = False
     
-    print(correct, int(sum(ll_target)), int(sum(ll_ntarget)), int(sum(ll_target) - sum(ll_ntarget)), filename)
+    print(correct, int(sum(ll_target) - sum(ll_ntarget)), filename)
 
+print((ok/total) * 100)
 
 print('')
 print('======Non-target test data evaluation======')
+total = 0
+ok = 0
 for filename, data in test_ntarget:
+    total += 1
     # standardise the data
     data = data.flatten()
-    data -= np.mean(data)
-    data /= np.std(data)
+    data -= train_mean
+    data /= train_std
     
     data = (data.dot(e_pca)).dot(e_lda)
     ll_target = logpdf_gauss(data, mean_x1, np.atleast_2d(cov_x1))
     ll_ntarget = logpdf_gauss(data, mean_x2, np.atleast_2d(cov_x2))
     
     # indicates whether the data point was correctly classified
-    if int(sum(ll_target) - sum(ll_ntarget)) < THRESHOLD: correct = True
+    if int(sum(ll_target) - sum(ll_ntarget)) < THRESHOLD:
+        ok += 1
+        correct = True
     else: correct = False
           
-    print(correct, int(sum(ll_target)), int(sum(ll_ntarget)), int(sum(ll_target) - sum(ll_ntarget)), filename)
+    print(correct, int(sum(ll_target) - sum(ll_ntarget)), filename)
+
+print((ok/total) * 100)
