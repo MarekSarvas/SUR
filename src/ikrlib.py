@@ -10,10 +10,10 @@ from numpy.random import rand, randn, randint
 from scipy.fftpack import dct
 from scipy.io import wavfile
 from scipy.linalg import eigh as eigh_
-from scipy.ndimage import imread
 from scipy.spatial.distance import cdist
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 import scipy.fftpack
+import imageio
 
 
 def k_nearest_neighbours(test_data, class1, class2, k):
@@ -306,9 +306,11 @@ def png2fea(dir_name):
     and values and 2D numpy arrays with corresponding grayscale images
     """
     features = {}
+    rgb = [0.2989, 0.5870, 0.1140]
     for f in glob(dir_name + '/*.png'):
         print('Processing file: ', f)
-        features[f] = imread(f, True).astype(np.float64)
+        image = imageio.imread(f).astype(np.float64)
+        features[f] = np.dot(image[...,:3], rgb) 
     return features
 
 def demo_gmm():

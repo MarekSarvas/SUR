@@ -20,7 +20,7 @@ TRAIN_TARGET = '../data/target_train/'
 TRAIN_NTARGET = '../data/non_target_train/'
 TEST_TARGET = '../data/target_dev/'
 TEST_NTARGET = '../data/non_target_dev/'
-THRESHOLD = 4000 # the evaluation treshold for the test data score
+THRESHOLD = 10000 # the evaluation treshold for the test data score
 
 # first, load target and non-target training and test data and convert each image
 # to a 1d array
@@ -47,8 +47,8 @@ x2 -= np.mean(x2)
 x2 /= np.std(x2)
 cov_tot = np.cov(np.vstack([x1, x2]).T, bias=True)
 
-# PCA - reduce the dimensionality to 50 dimensions, otherwise the LDA won't work...
-d_pca, e_pca = scipy.linalg.eigh(cov_tot, eigvals=(dim-50, dim-1))
+# PCA - reduce the dimensionality to 150 dimensions, otherwise the LDA won't work...
+d_pca, e_pca = scipy.linalg.eigh(cov_tot, eigvals=(dim-150, dim-1))
 x1_pca = x1.dot(e_pca)
 x2_pca = x2.dot(e_pca)
 
@@ -73,8 +73,8 @@ x2_lda = x2_pca.dot(e_lda)
 
 # ... and plot the lda result.. beautiful...
 plt.figure()
-junk = plt.hist(x1_lda, 40, histtype='step', color='b', normed=True)
-junk = plt.hist(x2_lda, 40, histtype='step', color='r', normed=True)
+junk = plt.hist(x1_lda, 40, histtype='step', color='b')
+junk = plt.hist(x2_lda, 40, histtype='step', color='r')
 plt.show()
 
 # compute the gaussian distributions for our classes and evalueate the test data
@@ -83,12 +83,12 @@ mean_x1, cov_x1 = train_gauss(x1_lda)
 mean_x2, cov_x2 = train_gauss(x2_lda)
 
 # plot the gaussians... awesome..
-plt.figure()
-gauss_x1 = np.linspace(mean_x1 - 10*cov_x1, mean_x1 + 10*cov_x1, 100)
-gauss_x2 = np.linspace(mean_x2 - 10*cov_x2, mean_x2 + 10*cov_x2, 100)
-plt.plot(gauss_x1, stats.norm.pdf(gauss_x1, mean_x1, cov_x1))
-plt.plot(gauss_x2, stats.norm.pdf(gauss_x2, mean_x2, cov_x2))
-plt.show()
+#plt.figure()
+#gauss_x1 = np.linspace(mean_x1 - 10*cov_x1, mean_x1 + 10*cov_x1, 100)
+#gauss_x2 = np.linspace(mean_x2 - 10*cov_x2, mean_x2 + 10*cov_x2, 100)
+#plt.plot(gauss_x1, stats.norm.pdf(gauss_x1, mean_x1, cov_x1))
+#plt.plot(gauss_x2, stats.norm.pdf(gauss_x2, mean_x2, cov_x2))
+#plt.show()
 
 print('======Target test data evaluation======')
 for filename, data in test_target:
