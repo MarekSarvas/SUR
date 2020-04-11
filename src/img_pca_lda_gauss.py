@@ -21,7 +21,7 @@ TRAIN_TARGET = '../data/target_train/'
 TRAIN_NTARGET = '../data/non_target_train/'
 TEST_TARGET = '../data/target_dev/'
 TEST_NTARGET = '../data/non_target_dev/'
-THRESHOLD = 100000 # the evaluation treshold for the test data score
+THRESHOLD = 900000 # the evaluation treshold for the test data score
 
 # first, load target and non-target training and test data and convert each image
 # to a 1d array
@@ -35,10 +35,10 @@ x1 = []
 x2 = []
 #image = gaussian_filter(list(train_target.values())[0], 1)
 #imageio.imwrite('hello.png', image)
-#for im in train_target.values(): x1.append(gaussian_filter(im, 1).flatten())
-#for im in train_ntarget.values(): x2.append(gaussian_filter(im, 1).flatten())
-for im in train_target.values(): x1.append(im.flatten())
-for im in train_ntarget.values(): x2.append(im.flatten())
+for im in train_target.values(): x1.append(gaussian_filter(im, 2).flatten())
+for im in train_ntarget.values(): x2.append(gaussian_filter(im, 2).flatten())
+#for im in train_target.values(): x1.append(im.flatten())
+#for im in train_ntarget.values(): x2.append(im.flatten())
 
 # convert data to numpy arrays
 x1 = np.array(x1) # target
