@@ -139,7 +139,7 @@ hit_n = hit/total * 100
 print("Hit target data%: ", hit_t)
 print("Hit non-targetdata %: ", hit_n)
 
-
+np.set_printoptions(threshold=np.inf)
 write_new = input('Do you want to save trained gmm data ?(y/n): ')
 if write_new.lower() == 'y':
     with open("gmm_values.txt", "w") as f:
