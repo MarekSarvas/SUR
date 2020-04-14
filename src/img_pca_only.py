@@ -1,9 +1,7 @@
 #!/usr/bin/python3.7
 
 ##
-# @file   img_pca_lda_gauss.py 
-# @brief  A shaky face recognition classifier. Utilizes pca, lda, and a gaussian
-#         probability distribution.
+# @file   img_pca_only.py 
 # @author Simon Sedlacek
 
 from ikrlib import *
@@ -21,7 +19,7 @@ TRAIN_TARGET = '../data/target_train/'
 TRAIN_NTARGET = '../data/non_target_train/'
 TEST_TARGET = '../data/target_dev/'
 TEST_NTARGET = '../data/non_target_dev/'
-THRESHOLD = 0.0 # the evaluation treshold for the test data score
+THRESHOLD = -4 # the evaluation treshold for the test data score
 
 # first, load target and non-target training and test data and convert each image
 # to a 1d array
@@ -83,34 +81,15 @@ x2 -= train_mean
 x2 /= train_std
 cov_tot = np.cov(np.vstack([x1, x2]).T, bias=True)
 
-# PCA - reduce the dimensionality in order for the lda to work
-d_pca, e_pca = scipy.linalg.eigh(cov_tot, eigvals=(dim-500, dim-1))
+# PCA
+d_pca, e_pca = scipy.linalg.eigh(cov_tot, eigvals=(dim-5, dim-1))
 x1_pca = x1.dot(e_pca)
 x2_pca = x2.dot(e_pca)
 
-# perform the LDA on the reduced data space
-cov_tot_pca = np.cov(np.vstack([x1_pca, x2_pca]).T, bias=True)
-dim_pca = x1_pca.shape[1]
-
-n_x1 = len(x1_pca)
-n_x2 = len(x2_pca)
-cov_wc = (n_x1*np.cov(x1_pca.T, bias=True) + n_x2*np.cov(x2_pca.T, bias=True)) / (n_x1 + n_x2)
-cov_ac = cov_tot_pca - cov_wc
-d_lda, e_lda = scipy.linalg.eigh(cov_ac, cov_wc, eigvals=(dim_pca-1, dim_pca-1))
-
-# now we've got our one dimensional data
-x1_lda = x1_pca.dot(e_lda)
-x2_lda = x2_pca.dot(e_lda)
-
-# ... and plot the lda result.. beautiful...
-plt.figure()
-junk = plt.hist(x1_lda, 40, histtype='step', color='b')
-junk = plt.hist(x2_lda, 40, histtype='step', color='r')
-plt.show()
-
 # compute the gaussian distributions for our classes and evalueate the test data
-mean_x1, cov_x1 = train_gauss(x1_lda)
-mean_x2, cov_x2 = train_gauss(x2_lda)
+mean_x1, cov_x1 = train_gauss(x1_pca)
+mean_x2, cov_x2 = train_gauss(x2_pca)
+print(cov_x1.shape)
 
 total = 0
 ok = 0
@@ -124,7 +103,7 @@ for filename, data in test_target:
     data -= train_mean
     data /= train_std
     
-    data = (data.dot(e_pca)).dot(e_lda) # transform the test data
+    data = data.dot(e_pca) # transform the test data
     ll_target = logpdf_gauss(data, mean_x1, np.atleast_2d(cov_x1))
     ll_ntarget = logpdf_gauss(data, mean_x2, np.atleast_2d(cov_x2))
 
@@ -154,7 +133,7 @@ for filename, data in test_ntarget:
     data -= train_mean
     data /= train_std
     
-    data = (data.dot(e_pca)).dot(e_lda)
+    data = data.dot(e_pca)
     ll_target = logpdf_gauss(data, mean_x1, np.atleast_2d(cov_x1))
     ll_ntarget = logpdf_gauss(data, mean_x2, np.atleast_2d(cov_x2))
     
