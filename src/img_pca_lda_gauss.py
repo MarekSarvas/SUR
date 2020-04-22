@@ -23,8 +23,7 @@ TEST_TARGET = '../data/target_dev/'
 TEST_NTARGET = '../data/non_target_dev/'
 THRESHOLD = 0.0 # the evaluation treshold for the test data score
 
-# first, load target and non-target training and test data and convert each image
-# to a 1d array
+# first, load target and non-target training and test data
 train_target = png2fea(TRAIN_TARGET) # target training data
 train_ntarget = png2fea(TRAIN_NTARGET) # non-target training data
 test_target = list(png2fea(TEST_TARGET).items()) # target test data
