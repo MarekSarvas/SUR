@@ -12,143 +12,148 @@ import imageio
 import sys
 from scipy.ndimage import gaussian_filter
 
+# this function cuts up the array to chunks and lets us process these
+def divide_chunks(l, n):
+    # looping till length l 
+    for i in range(0, len(l), n):  
+        yield l[i:i + n]
+        
+def remove_silence(record):
+    # First cut off the first 190 frames of the recording
+    record = record[INITIAL_CUTOFF:]
+    # calculate the mean energy in order to remove silence
+    mean_energy = np.mean(record[:][:,0])
+    
+    if mean_energy > DEFAULT_MEAN: mean_energy = DEFAULT_MEAN
+    
+    # now split the arrays into segments of length MEAN_SEGMENT_LEN
+    # and compare the mean of these chunks to the overall mean
+    new = []
+    for seg in divide_chunks(record, MEAN_SEGMENT_LEN):
+        
+        if np.mean(seg[:][:,0]) > mean_energy * MEAN_MULTIPLIER:
+            new.append(seg)
+            
+    return np.vstack(new)
+
+# load trained values for gmm clasification
+def load_gmm_params():
+    data_path = '../gmm_speech_trained/'
+    return np.load(data_path+'ws1.npy'), np.load(data_path+'ws2.npy'), np.load(data_path+'mus1.npy'), np.load(data_path+'mus2.npy'), np.load(data_path+'covs1.npy'), np.load(data_path+'covs2.npy')
+
+def modify_filename(filename):
+    filename = filename.split('/')[-1]
+    return filename.split('.wav')[0]
+
+# evaluate .wav files in data_path folder using trained gmm
+def evaluate_speech_gmm(data_path):
+    THRESHOLD = 100
+    ws1, ws2, mus1, mus2, covs1, covs2 = load_gmm_params()
+    test_data = wav16khz2mfcc(data_path)
+    hit = 0
+    total = 0
+    for filename in test_data:
+        # remove silence from test data
+        data = remove_silence(test_data[filename])
+        total += 1
+
+        # evaluate log likelihood
+        ll_t = logpdf_gmm(data, ws1, mus1, covs1)
+        ll_n = logpdf_gmm(data, ws2, mus2, covs2)
+
+        # evaluate if the data point was correctly classified
+        if sum(ll_t) - sum(ll_n) > THRESHOLD:
+            status = 1
+            hit += 1
+        else:
+            status = 0
+        print("{}  {:.10f}  {}".format(modify_filename(filename), sum(ll_t) - sum(ll_n), status))
+
+    #print("Target: {}%".format(hit/total * 100))
+
+# Important global variables
 # paths to data directories
 TRAIN_TARGET = '../data/target_train/'
 TRAIN_NTARGET = '../data/non_target_train/'
 TEST_TARGET = '../data/target_dev/'
 TEST_NTARGET = '../data/non_target_dev/'
-THRESHOLD = 100
+
+# Some parameters for us to play with....
+MEAN_SEGMENT_LEN = 20
+INITIAL_CUTOFF = 190
+MEAN_MULTIPLIER = 1
+DEFAULT_MEAN = 40.0
 COMPONENTS = 20
 
-# load target and non target voice data
-train_t = list(wav16khz2mfcc(TRAIN_TARGET).values()) # target train data
-train_n = list(wav16khz2mfcc(TRAIN_NTARGET).values()) # non-target train data
 
-print('TEST DATA')
-test_t = wav16khz2mfcc(TEST_TARGET) # target test data
-test_n = wav16khz2mfcc(TEST_NTARGET) # non-target test data
+def train_gmm():
 
-# convert to numpy arrays
-train_t = np.vstack(train_t)
-train_n = np.vstack(train_n)
+    # load target and non target voice data
+    train_t = list(wav16khz2mfcc(TRAIN_TARGET).values()) # target train data
+    train_n = list(wav16khz2mfcc(TRAIN_NTARGET).values()) # non-target train data
+
+    # remove silence from train data
+    new_t = []
+    for rec in train_t:
+        new_t.append(remove_silence(rec))
+
+    new_n = []
+    for rec in train_n:
+        new_n.append(remove_silence(rec))
+
+    train_t = new_t
+    train_n = new_n
+
+    test_t = wav16khz2mfcc(TEST_TARGET) # target test data
+    test_n = wav16khz2mfcc(TEST_NTARGET) # non-target test data
+
+    # convert to numpy arrays
+    train_t = np.vstack(train_t)
+    train_n = np.vstack(train_n)
+
+    mu1, cov1 = train_gauss(train_t)
+    mu2, cov2 = train_gauss(train_n)
+    p1 = p2 = 0.5
+
+    # Train and test with GMM models with full covariance matrices
+    # number of gmm components 
+    m1 = COMPONENTS
+
+    # Initialize mean vectors to randomly selected data points from corresponding class
+    mus1 = train_t[randint(1, len(train_t), m1)]
+
+    # Initialize all covariance matrices to the same covariance matrices computed using
+    # all the data from the given class
+    covs1 = [cov1] * m1
+
+    # uniform distribution as initial guess for the weights
+    ws1 = np.ones(m1) / m1
+
+    m2 = COMPONENTS
+    mus2 = train_n[randint(1, len(train_n), m2)]
+    covs2 = [cov2] * m2
+    ws2 = np.ones(m2) / m2
+
+    # train gmm for target and non-target data in 100 iterations
+    print('Training gmm...')
+    for i in range(200):
+        ws1, mus1, covs1, ttl1_new = train_gmm(train_t, ws1, mus1, covs1)
+        ws2, mus2, covs2, ttl2_new = train_gmm(train_n, ws2, mus2, covs2)
 
 
-mu1, cov1 = train_gauss(train_t)
-mu2, cov2 = train_gauss(train_n)
-p1 = p2 = 0.5
+    print('=========================target test data===========================')
+    evaluate_speech_gmm(TEST_TARGET)
+    print('=======================non-target test data=========================')
+    evaluate_speech_gmm(TEST_NTARGET)
 
-# Train and test with GMM models with full covariance matrices
-# number of gmm components 
-m1 = COMPONENTS
-
-# Initialize mean vectors to randomly selected data points from corresponding class
-mus1 = train_t[randint(1, len(train_t), m1)]
-
-# Initialize all covariance matrices to the same covariance matrices computed using
-# all the data from the given class
-covs1 = [cov1] * m1
-
-# uniform distribution as initial guess for the weights
-ws1 = np.ones(m1) / m1
-
-m2 = COMPONENTS
-mus2 = train_n[randint(1, len(train_n), m2)]
-covs2 = [cov2] * m2
-ws2 = np.ones(m2) / m2
-
-hard_decision = lambda x: logpdf_gauss(x, mu1, cov1) + np.log(p1) > logpdf_gauss(x, mu2, cov2) + np.log(p2)
-
-# train gmm for target and non-target data in 100 iterations
-print('Training gmm...')
-for i in range(200):
-    ws1, mus1, covs1, ttl1_new = train_gmm(train_t, ws1, mus1, covs1)
-    ws2, mus2, covs2, ttl2_new = train_gmm(train_n, ws2, mus2, covs2)
+    a = input("Do you want to save gmm values?(Y/n)")
+    if str(a).upper() == 'Y':
+        np.save('../gmm_speech_trained/ws1.npy', ws1)
+        np.save('../gmm_speech_trained/ws2.npy', ws2)
+        np.save('../gmm_speech_trained/covs1.npy', covs1)
+        np.save('../gmm_speech_trained/covs2.npy', covs2)
+        np.save('../gmm_speech_trained/mus1.npy', mus1)
+        np.save('../gmm_speech_trained/mus2.npy', mus2)
 
 
-"""
-ttl1_old = None
-ttl2_old = None
-first_iter = True
-while True:
-    ws1, mus1, covs1, ttl1_new = train_gmm(train_t, ws1, mus1, covs1)
-    ws2, mus2, covs2, ttl2_new = train_gmm(train_n, ws2, mus2, covs2)
-
-    if not first_iter:
-        if abs(abs(ttl1_new) - abs(ttl1_old)) < 0.0001  and abs(abs(ttl2_new) - abs(ttl2_old)) < 0.0001:
-            break   
-    
-    ttl1_old = ttl1_new
-    ttl2_old = ttl2_new
-    first_iter = False
-"""    
-
-hit = 0
-total = 0
-
-print('=========================target test data===========================')
-for filename in test_t:
-    total += 1
-    data = np.vstack(test_t[filename])
-
-    ll_t = logpdf_gmm(data, ws1, mus1, covs1)
-    ll_n = logpdf_gmm(data, ws2, mus2, covs2)
-
-    """
-    if logpdf_gmm(data, ws1, mus1, covs1) + np.log(p1) > logpdf_gmm(data, ws2, mus2, covs2) + np.log(p2):
-        print('HIT')
-    else:
-        print('MISS')
-    """
-    # evaluate if the data point was correctly classified
-    if int(sum(ll_t)) - int(sum(ll_n)) > THRESHOLD:
-        status = 'HIT'
-        hit += 1
-    else:
-        status = 'MISS'
-    print(filename,': ', int(sum(ll_t)) - int(sum(ll_n)), ' : ', status)
-
-hit_t = hit/total * 100
-hit = 0
-total = 0
-
-print('=========================non-target test data===========================')
-for filename in test_n:
-    total += 1
-    data = np.vstack(test_n[filename])
-
-    ll_t = logpdf_gmm(data, ws1, mus1, covs1)
-    ll_n = logpdf_gmm(data, ws2, mus2, covs2)
-    
-    """
-    if logpdf_gmm(data, ws1, mus1, covs1) + np.log(p1) > logpdf_gmm(data, ws2, mus2, covs2) + np.log(p2):
-        print('HIT')
-    else:
-        print('MISS')
-    """
-    # evaluate if the data point was correctly classified
-    if int(sum(ll_t)) - int(sum(ll_n)) > THRESHOLD:
-        status = 'MISS'
-    else:
-        status = 'HIT'
-        hit += 1
-
-    print(filename,': ', int(sum(ll_t)) - int(sum(ll_n)), ' : ', status)
-
-hit_n = hit/total * 100
-
-print("Hit target data%: ", hit_t)
-print("Hit non-targetdata %: ", hit_n)
-
-np.set_printoptions(threshold=np.inf)
-write_new = input('Do you want to save trained gmm data ?(y/n): ')
-if write_new.lower() == 'y':
-    with open("gmm_values.txt", "w") as f:
-        f.write('Target data:\n')
-        f.write('ws: {0}\n'.format(ws1))
-        f.write('mus: {0}\n'.format(mus1))
-        f.write('covs: {0}\n'.format(covs1))
-        f.write('Non-target data:\n')
-        f.write('ws: {0}\n'.format(ws2))
-        f.write('mus: {0}\n'.format(mus2))
-        f.write('covs: {0}\n'.format(covs2))
-
+#train_gmm()
