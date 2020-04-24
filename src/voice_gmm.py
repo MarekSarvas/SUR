@@ -12,6 +12,19 @@ import imageio
 import sys
 from scipy.ndimage import gaussian_filter
 
+# paths to data directories
+TRAIN_TARGET = '../data/target_train/'
+TRAIN_NTARGET = '../data/non_target_train/'
+TEST_TARGET = '../data/target_dev/' 
+TEST_NTARGET = '../data/non_target_dev/'
+EVAL_DATA = '../eval/' # default var used in evaluation
+
+# Some parameters for us to play with....
+MEAN_SEGMENT_LEN = 20
+INITIAL_CUTOFF = 190
+MEAN_MULTIPLIER = 1
+DEFAULT_MEAN = 40.0
+COMPONENTS = 20
 # this function cuts up the array to chunks and lets us process these
 def divide_chunks(l, n):
     # looping till length l 
@@ -46,7 +59,7 @@ def modify_filename(filename):
     return filename.split('.wav')[0]
 
 # evaluate .wav files in data_path folder using trained gmm
-def evaluate_speech_gmm(data_path):
+def evaluate_speech_gmm(data_path=EVAL_DATA):
     THRESHOLD = 100
     ws1, ws2, mus1, mus2, covs1, covs2 = load_gmm_params()
     test_data = wav16khz2mfcc(data_path)
@@ -69,23 +82,11 @@ def evaluate_speech_gmm(data_path):
             status = 0
         print("{}  {:.10f}  {}".format(modify_filename(filename), sum(ll_t) - sum(ll_n), status))
 
-    print("Target: {}%".format(hit/total * 100))
+    print("Target: {} %".format(hit/total * 100))
     print("Target: {}".format(hit))
     print("Non-target: {}".format(total-hit))
 
-# Important global variables
-# paths to data directories
-TRAIN_TARGET = '../data/target_train/'
-TRAIN_NTARGET = '../data/non_target_train/'
-TEST_TARGET = '../data/target_dev/'
-TEST_NTARGET = '../data/non_target_dev/'
 
-# Some parameters for us to play with....
-MEAN_SEGMENT_LEN = 20
-INITIAL_CUTOFF = 190
-MEAN_MULTIPLIER = 1
-DEFAULT_MEAN = 40.0
-COMPONENTS = 20
 
 
 def my_train_gmm():
@@ -162,5 +163,15 @@ def my_train_gmm():
         np.save('../gmm_speech_trained_both/mus1.npy', mus1)
         np.save('../gmm_speech_trained_both/mus2.npy', mus2)
 
-
-#my_train_gmm()
+if len(sys.argv) != 2:
+    print("Invalid number of arguments, try --help")
+    sys.exit(1)
+if sys.argv[1] == '--help':
+    print("--eval argument for evaluating data on trained gmm for speech clasification\n--train for training gmm for speech clasification")
+elif sys.argv[1] == '--eval':
+    evaluate_speech_gmm()
+elif sys.argv[1] == '--train':
+    my_train_gmm()
+else:
+    print("Invalid program argument, try --help")
+    sys.exit(1)
