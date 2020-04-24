@@ -38,7 +38,7 @@ def remove_silence(record):
 
 # load trained values for gmm clasification
 def load_gmm_params():
-    data_path = '../gmm_speech_trained/'
+    data_path = '../gmm_speech_trained_both/'
     return np.load(data_path+'ws1.npy'), np.load(data_path+'ws2.npy'), np.load(data_path+'mus1.npy'), np.load(data_path+'mus2.npy'), np.load(data_path+'covs1.npy'), np.load(data_path+'covs2.npy')
 
 def modify_filename(filename):
@@ -69,7 +69,9 @@ def evaluate_speech_gmm(data_path):
             status = 0
         print("{}  {:.10f}  {}".format(modify_filename(filename), sum(ll_t) - sum(ll_n), status))
 
-    #print("Target: {}%".format(hit/total * 100))
+    print("Target: {}%".format(hit/total * 100))
+    print("Target: {}".format(hit))
+    print("Non-target: {}".format(total-hit))
 
 # Important global variables
 # paths to data directories
@@ -86,21 +88,26 @@ DEFAULT_MEAN = 40.0
 COMPONENTS = 20
 
 
-def train_gmm():
+def my_train_gmm():
 
     # load target and non target voice data
     train_t = list(wav16khz2mfcc(TRAIN_TARGET).values()) # target train data
     train_n = list(wav16khz2mfcc(TRAIN_NTARGET).values()) # non-target train data
-
+    test_t = list(wav16khz2mfcc(TEST_TARGET).values())
+    test_n = list(wav16khz2mfcc(TEST_NTARGET).values())
     # remove silence from train data
     new_t = []
     for rec in train_t:
+        new_t.append(remove_silence(rec))
+    for rec in test_t:
         new_t.append(remove_silence(rec))
 
     new_n = []
     for rec in train_n:
         new_n.append(remove_silence(rec))
 
+    for rec in test_n:
+        new_n.append(remove_silence(rec))
     train_t = new_t
     train_n = new_n
 
@@ -148,12 +155,12 @@ def train_gmm():
 
     a = input("Do you want to save gmm values?(Y/n)")
     if str(a).upper() == 'Y':
-        np.save('../gmm_speech_trained/ws1.npy', ws1)
-        np.save('../gmm_speech_trained/ws2.npy', ws2)
-        np.save('../gmm_speech_trained/covs1.npy', covs1)
-        np.save('../gmm_speech_trained/covs2.npy', covs2)
-        np.save('../gmm_speech_trained/mus1.npy', mus1)
-        np.save('../gmm_speech_trained/mus2.npy', mus2)
+        np.save('../gmm_speech_trained_both/ws1.npy', ws1)
+        np.save('../gmm_speech_trained_both/ws2.npy', ws2)
+        np.save('../gmm_speech_trained_both/covs1.npy', covs1)
+        np.save('../gmm_speech_trained_both/covs2.npy', covs2)
+        np.save('../gmm_speech_trained_both/mus1.npy', mus1)
+        np.save('../gmm_speech_trained_both/mus2.npy', mus2)
 
 
-#train_gmm()
+#my_train_gmm()
