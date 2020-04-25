@@ -22,7 +22,7 @@ EVAL_DATA = '../eval/' # default var used in evaluation
 
 # Some parameters for us to play with....
 MEAN_SEGMENT_LEN = 20
-INITIAL_CUTOFF = 190
+INITIAL_CUTOFF = 100
 MEAN_MULTIPLIER = 1
 DEFAULT_MEAN = 40.0
 COMPONENTS = 20
