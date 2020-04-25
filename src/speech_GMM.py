@@ -13,12 +13,20 @@ import sys
 import pickle
 from scipy.ndimage import gaussian_filter
 
-# paths to data directories
+
+# paths to data directories NOTE: edit these to suit your needs...
+#==============================================================
+# training data
 TRAIN_TARGET = '../data/target_train/'
 TRAIN_NTARGET = '../data/non_target_train/'
+
+# data meant for classification
+EVAL_DATA = '../eval/'
+#==============================================================
+
+
 TEST_TARGET = '../data/target_dev/' 
 TEST_NTARGET = '../data/non_target_dev/'
-EVAL_DATA = '../eval/' # default var used in evaluation
 
 # Some parameters for us to play with....
 MEAN_SEGMENT_LEN = 20
@@ -99,28 +107,25 @@ def my_train_gmm():
     # load target and non target voice data
     train_t = list(wav16khz2mfcc(TRAIN_TARGET).values()) # target train data
     train_n = list(wav16khz2mfcc(TRAIN_NTARGET).values()) # non-target train data
-    test_t = list(wav16khz2mfcc(TEST_TARGET).values())
-    test_n = list(wav16khz2mfcc(TEST_NTARGET).values())
+    #test_t = list(wav16khz2mfcc(TEST_TARGET).values())
+    #test_n = list(wav16khz2mfcc(TEST_NTARGET).values())
     
     # remove silence from train data
     new_t = []
     for rec in train_t:
         new_t.append(remove_silence(rec))
-    for rec in test_t:
-        new_t.append(remove_silence(rec))
+    #for rec in test_t:
+    #    new_t.append(remove_silence(rec))
 
     new_n = []
     for rec in train_n:
         new_n.append(remove_silence(rec))
 
-    for rec in test_n:
-        new_n.append(remove_silence(rec))
+    #for rec in test_n:
+    #    new_n.append(remove_silence(rec))
 
     train_t = new_t
     train_n = new_n
-
-    test_t = wav16khz2mfcc(TEST_TARGET) # target test data
-    test_n = wav16khz2mfcc(TEST_NTARGET) # non-target test data
 
     # convert to numpy arrays
     train_t = np.vstack(train_t)
