@@ -1,34 +1,30 @@
 #!/usr/bin/python3.7
 
 ##
-# @file   img_pca_lda.py 
+# @file   image_pca_lda_gauss.py 
 # @brief  A shaky face recognition classifier. Utilizes pca, lda, and a gaussian
 #         probability distribution.
-# @author Simon Sedlacek
 
-from ikrlib import *
-from glob import glob
+import numpy as np
 import sys
 import pickle
-
-import matplotlib.pyplot as plt
-import numpy as np
 import scipy
 import imageio
-from scipy.ndimage import gaussian_filter
+
+from ikrlib import png2fea, train_gauss, logpdf_gauss
 from scipy.ndimage import rotate
 
 THRESHOLD = 2.0 # the hard decision threshold
-PRINT_STATS = False
+PRINT_STATS = True
 
-#==============================================================
 # paths to data directories NOTE: edit these to suit your needs...
+#==============================================================
 # training data
 TRAIN_TARGET = '../data/train_ultimate_target/'
 TRAIN_NTARGET = '../data/train_ultimate_ntarget/'
 
 # data meant for classification
-EVAL = '../../SUR_projekt2019-2020_eval/eval/'
+EVAL_DATA = '../../SUR_projekt2019-2020_eval/eval/'
 #==============================================================
 
 # The folowing four functions are used in the data augmentation process
@@ -131,7 +127,7 @@ def train_classifier():
         f.close()
 
 
-# This function classifies the data, path to which is stored in the EVAL
+# This function classifies the data, path to which is stored in the EVAL_DATA
 # constant. The name of each file and it's score as well as the hard
 # decision is printed out once the file is classified
 def classify():
@@ -154,7 +150,7 @@ def classify():
     train_std = model_parameters[5]
 
     # load the evaluation data
-    eval_data = list(png2fea(EVAL).items()) # evaluation data
+    eval_data = list(png2fea(EVAL_DATA).items()) # evaluation data
 
     # ...aaand classify the given data
     count = 0
@@ -180,26 +176,28 @@ def classify():
         else: decision = 0 # non-target
 
         results.append(filename.split('/')[-1].split('.')[0]
-                + ' ' + str(score)
+                + ' ' + str(np.around(score, decimals=8))
                 + ' ' + str(decision))
 
     results.sort()
-    for result in results: print(result)
-    if PRINT_STATS: print(count)
-    f.close()
+    output = open('image_pca_lda_gaussian.txt', 'w')
+    for result in results: print(result, file=output)
+    if PRINT_STATS: print(f'Targets found: {count}')
+    output.close()
 
-# First, parse the program args..
+if __name__ == "__main__":
+    # First, parse the program args..
 
-train = False
-evaluate = False
+    train = False
+    evaluate = False
 
-if '--train' in sys.argv: train = True
-if '--eval' in sys.argv: evaluate = True
-if train == False and evaluate == False:
-    print('Please specify whether you want to train the classifier by using the '
-          + '[--train] argument, or whether you want to classify some data, by using the '
-          + '[--eval] parameter')
+    if '--train' in sys.argv: train = True
+    if '--eval' in sys.argv: evaluate = True
+    if train == False and evaluate == False:
+        print('Please specify whether you want to train the classifier by using the '
+              + '[--train] argument, or whether you want to classify some data, by using the '
+              + '[--eval] parameter')
 
-# launch the specified functions
-if train: train_classifier()
-if evaluate: classify()
+    # launch the specified functions
+    if train: train_classifier()
+    if evaluate: classify()

@@ -282,7 +282,7 @@ def raw8khz2mfcc(dir_name):
     """
     features = {}
     for f in glob(dir_name + '/*.raw'):
-        print('Processing file: ', f)
+        #print('Processing file: ', f)
         features[f] = mfcc(np.fromfile(f, np.int16, -1, ''), 200, 120, 256, 8000, 23, 13)
     return features
 
@@ -294,7 +294,7 @@ def wav16khz2mfcc(dir_name):
     """
     features = {}
     for f in glob(dir_name + '/*.wav'):
-        print('Processing file: ', f)
+        #print('Processing file: ', f)
         rate, s = wavfile.read(f)
         assert(rate == 16000)
         features[f] = mfcc(s, 400, 240, 512, 16000, 23, 13)
@@ -309,7 +309,7 @@ def png2fea(dir_name):
     features = {}
     rgb = [0.2989, 0.5870, 0.1140]
     for f in glob(dir_name + '/*.png'):
-        print('Processing file: ', f)
+        #print('Processing file: ', f)
         image = imageio.imread(f).astype(np.float64)
         features[f] = np.dot(image[...,:3], rgb) 
     return features
